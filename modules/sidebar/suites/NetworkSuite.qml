@@ -286,7 +286,7 @@ FocusScope {
                 height: 30
                 spacing: 10
 
-                readonly property int leftW: Math.floor((width - spacing) * 0.44)
+                readonly property int leftW: Math.floor((width - spacing) * 0.5 )
                 readonly property int rightW: (width - spacing) - leftW
 
                 Rectangle {
