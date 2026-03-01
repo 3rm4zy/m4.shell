@@ -11,3 +11,4 @@ run/
 .idea/
 .vscode/
 .ssh/*
+.ssh
