@@ -1,6 +1,6 @@
 <img width="2880" height="1800" alt="screenshot" src="https://github.com/user-attachments/assets/647438a5-c7b9-4ce7-aff7-c50c290e59ee" />
 
-# MazyShell
+# M4.Shell
 A powerful yet simple UI overlay made for Hyprland, Niri, and Sway
 
 >[!WARNING]
@@ -59,15 +59,15 @@ cd ~/.config/quickshell
 ```
 3. Clone the repo:
 ```
-git clone https://github.com/cyb3rm4zy/MazyShell.git
+git clone https://tangled.org/3r.m4zy.lol/m4.shell
 ```
-4. Test Run Quickshell with MazyShell config:
+4. Test Run Quickshell with the m4.shell config:
 ```
-QT_QPA_PLATFORMTHEME=xdgdesktopportal qs -c MazyShell
+QT_QPA_PLATFORMTHEME=xdgdesktopportal qs -c m4.shell
 ```
 5. Add to Hyprland config:
 ```
-exec-once = QT_QPA_PLATFORMTHEME=xdgdesktopportal qs -c MazyShell
+exec-once = QT_QPA_PLATFORMTHEME=xdgdesktopportal qs -c m4.shell
 ```
 ### Niri
 1. Create new Quickshell directory:
@@ -80,13 +80,13 @@ cd ~/.config/quickshell
 ```
 3. Clone the repo:
 ```
-git clone https://github.com/cyb3rm4zy/MazyShell.git
+git clone https://tangled.org/3r.m4zy.lol/m4.shell
 ```
-4. Test Run Quickshell with MazyShell config:
+4. Test Run Quickshell with the m4.shell config:
 ```
-QT_QPA_PLATFORMTHEME=xdgdesktopportal qs -c MazyShell
+QT_QPA_PLATFORMTHEME=xdgdesktopportal qs -c m4.shell
 ```
 5. Add to Niri config:
 ```
-spawn-sh-at-startup "QT_QPA_PLATFORMTHEME=xdgdesktopportal qs -c MazyShell"
+spawn-sh-at-startup "QT_QPA_PLATFORMTHEME=xdgdesktopportal qs -c m4.shell"
 ```

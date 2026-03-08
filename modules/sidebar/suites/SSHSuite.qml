@@ -534,7 +534,6 @@ FocusScope {
                 border.width: 1
                 border.color: root.borderColor
                 clip: true
-
                 readonly property int headerH: 0
                 readonly property int bodyH: addCol.implicitHeight + 12
 
@@ -588,7 +587,7 @@ FocusScope {
                         width: parent.width
                         height: 34
                         spacing: 8
-
+                        topPadding: 8
                         Column {
                             width: (parent.width - 8) * 0.62
                             spacing: 4
@@ -633,9 +632,10 @@ FocusScope {
 
                     Row {
                         width: parent.width
-                        height: 34
-                        spacing: 15
-                        Text { text: root.selectedKeyLabel.length ? ("Key Selected: " + root.selectedKeyLabel) : "Key Selected: none"; color: root.muted; font.pixelSize: 10 }
+                        topPadding: 32
+                        height: 42
+                        spacing: 8
+                        Text { text: root.selectedKeyLabel.length ? ("Key Selected: " + root.selectedKeyLabel) : "Key Selected: none"; color: root.muted; font.pixelSize: 11 }
                     }
 
                     Rectangle {
@@ -655,7 +655,7 @@ FocusScope {
                             onTextChanged: root.formKeyPath = text
                         }
                         Loader {
-                            anchors.fill: parent
+                            anchors.centerIn: parent
                             visible: !root.formKeyUseNone
                             sourceComponent: placeholderTextComp
                             onLoaded: { item.input = connKeyPath; item.text = "e.g. ~/.ssh/id_ed25519" }
@@ -664,7 +664,7 @@ FocusScope {
 
                     Row {
                         width: parent.width
-                        height: 24
+                        height: 36
                         spacing: 8
 
                         Rectangle {
@@ -726,7 +726,7 @@ FocusScope {
                             radius: 10
                             color: root.bg2
                             border.width: 1
-                            border.color: addCancel.hovered ? root.red : root.borderColor
+                            border.color: root.borderColor
                             property bool hovered: false
 
                             Text { anchors.centerIn: parent; text: "Cancel"; color: addCancel.hovered ? root.red : root.muted; font.pixelSize: 12 }
@@ -749,7 +749,7 @@ FocusScope {
                             radius: 10
                             color: root.bg2
                             border.width: 1
-                            border.color: addSave.hovered ? root.red : root.borderColor
+                            border.color: root.borderColor
                             property bool hovered: false
 
                             Text { anchors.centerIn: parent; text: root.editingConn ? "Save" : "Create"; color: addSave.hovered ? root.red : root.text; font.pixelSize: 12 }
