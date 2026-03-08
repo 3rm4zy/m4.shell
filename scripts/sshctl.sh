@@ -3,7 +3,7 @@ set -u
 
 cmd="${1:-}"
 
-base_dir="${HOME}/.config/quickshell/MazyShell/ssh"
+base_dir="${HOME}/.config/quickshell/m4.shell/ssh"
 conn_db="${base_dir}/connections.db"   # name|host|user|port|keypath
 key_db="${base_dir}/keys.db"           # label|path
 gen_dir="${base_dir}/keys"

@@ -19,7 +19,7 @@ PanelWindow {
 
     WlrLayershell.layer: WlrLayer.Background
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-    WlrLayershell.namespace: "mazyshell:wallpaper"
+    WlrLayershell.namespace: "m4.shell:wallpaper"
 
     readonly property string sourcePath: (config && config.wallpapers) ? config.wallpapers.current : ""
     readonly property int reloadSerial: (config && config.wallpapers) ? config.wallpapers.reloadSerial : 0

@@ -42,7 +42,7 @@ QtObject {
     }
 
     property Settings settings: Settings {
-        category: "MazyShell"
+        category: "m4.shell"
         property string wallpaperPath: ""
     }
 }

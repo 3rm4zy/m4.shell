@@ -26,7 +26,7 @@ FocusScope {
 
     readonly property var termCmd: ["kitty", "-e"]
 
-    readonly property string ctl: "$HOME/.config/quickshell/MazyShell/scripts/vpnctl.sh"
+    readonly property string ctl: "$HOME/.config/quickshell/m4.shell/scripts/vpnctl.sh"
 
     property bool configsExpanded: false
 
@@ -42,7 +42,7 @@ FocusScope {
     property string newName: ""
 
     property string lastError: ""
-    readonly property string logPath: "/tmp/mazyshell-wg.log"
+    readonly property string logPath: "/tmp/m4.shell-wg.log"
 
     property bool holdRefresh: false
 

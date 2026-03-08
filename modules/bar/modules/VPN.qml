@@ -16,7 +16,7 @@ Item {
 
     property bool connected: false
 
-    readonly property string ctl: "$HOME/.config/quickshell/MazyShell/scripts/vpnctl.sh"
+    readonly property string ctl: "$HOME/.config/quickshell/m4.shell/scripts/vpnctl.sh"
 
     function iconForState() {
 

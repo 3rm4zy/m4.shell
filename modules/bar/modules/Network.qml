@@ -28,7 +28,7 @@ Row {
 
     readonly property int ssidMaxWidth: 170
 
-    readonly property string ctl: "$HOME/.config/quickshell/MazyShell/scripts/networkctl.sh"
+    readonly property string ctl: "$HOME/.config/quickshell/m4.shell/scripts/networkctl.sh"
 
     function _iconForKind(k) {
         if (k === "wifi") return "󰖩"

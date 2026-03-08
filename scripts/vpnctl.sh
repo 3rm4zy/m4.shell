@@ -54,7 +54,7 @@ ip_cmd() {
 down_cmd() {
   local name log
   name="$(safe_name "${1:-}")"
-  log="${2:-/tmp/mazyshell-wg.log}"
+  log="${2:-/tmp/m4.shell-wg.log}"
 
   ensure_dir
   : >"$log" 2>/dev/null || true
@@ -70,7 +70,7 @@ up_cmd() {
   local name old log
   name="$(safe_name "${1:-}")"
   old="$(safe_name "${2:-}")"
-  log="${3:-/tmp/mazyshell-wg.log}"
+  log="${3:-/tmp/m4.shell-wg.log}"
 
   ensure_dir
   : >"$log" 2>/dev/null || true

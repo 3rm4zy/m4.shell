@@ -5,8 +5,8 @@ import Quickshell
 QtObject {
     id: root
 
-    property string cfgPath: "$HOME/.config/quickshell/MazyShell/config.json"
-    property string ctlPath: "$HOME/.config/quickshell/MazyShell/scripts/configctl.sh"
+    property string cfgPath: "$HOME/.config/quickshell/m4.shell/config.json"
+    property string ctlPath: "$HOME/.config/quickshell/m4.shell/scripts/configctl.sh"
 
     property var data: ({})
     property bool loaded: false

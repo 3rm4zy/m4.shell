@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/MazyShell"
+BASE="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/m4.shell"
 CFG="$BASE/config.json"
 DEF="$BASE/config.defaults.json"
 

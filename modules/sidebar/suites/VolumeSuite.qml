@@ -21,7 +21,7 @@ Item {
     property int radius: 12
     property int rowH: 30
 
-    readonly property string audioctlPath: "$HOME/.config/quickshell/MazyShell/scripts/audioctl.sh"
+    readonly property string audioctlPath: "$HOME/.config/quickshell/m4.shell/scripts/audioctl.sh"
 
     ListModel { id: sinkModel }
     ListModel { id: sourceModel }

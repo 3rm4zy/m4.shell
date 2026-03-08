@@ -23,7 +23,7 @@ FocusScope {
     implicitHeight: box.implicitHeight
 
     readonly property var termCmd: ["kitty", "-e"]
-    readonly property string ctl: "$HOME/.config/quickshell/MazyShell/scripts/sshctl.sh"
+    readonly property string ctl: "$HOME/.config/quickshell/m4.shell/scripts/sshctl.sh"
 
     // Panels
     property bool connsExpanded: false
@@ -1064,7 +1064,7 @@ FocusScope {
                         spacing: 6
                         visible: root.generatingKey
 
-                        Text { text: "Filename (stored in ~/.config/mazyshell/ssh/keys/)"; color: root.muted; font.pixelSize: 11 }
+                        Text { text: "Filename (stored in ~/.config/quickshell/m4.shell/ssh/keys/)"; color: root.muted; font.pixelSize: 11 }
                         Rectangle {
                             width: parent.width; height: 34; radius: 10
                             color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
@@ -1103,7 +1103,7 @@ FocusScope {
                             Loader {
                                 anchors.fill: parent
                                 sourceComponent: placeholderTextComp
-                                onLoaded: { item.input = keyCommentInput; item.text = "e.g. ethan@mazyshell" }
+                                onLoaded: { item.input = keyCommentInput; item.text = "e.g. ethan@m4.shell" }
                             }
                         }
 

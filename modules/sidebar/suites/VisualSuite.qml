@@ -24,7 +24,7 @@ Item {
     implicitWidth: 220
     implicitHeight: box.implicitHeight
 
-    readonly property string ctl: "$HOME/.config/quickshell/MazyShell/scripts/visualctl.sh"
+    readonly property string ctl: "$HOME/.config/quickshell/m4.shell/scripts/visualctl.sh"
 
     function shQuote(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'" }
 

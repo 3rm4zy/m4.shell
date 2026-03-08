@@ -22,7 +22,7 @@ SWAYLOCK_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/swaylock"
 BASE="$SWAYLOCK_DIR/base.conf"
 OUT="$SWAYLOCK_DIR/config"
 
-CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/mazyshell"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/m4.shell"
 mkdir -p "$SWAYLOCK_DIR" "$CACHE_DIR"
 
 hash=""
@@ -57,8 +57,8 @@ if [ -f "$BASE" ]; then
 elif [ -f "$OUT" ]; then
   awk '
     BEGIN {skip=0}
-    /^# --- MazyShell Wallpaper Start ---$/ {skip=1; next}
-    /^# --- MazyShell Wallpaper End ---$/   {skip=0; next}
+    /^# --- m4.shell Wallpaper Start ---$/ {skip=1; next}
+    /^# --- m4.shell Wallpaper End ---$/   {skip=0; next}
     skip==0 {print}
   ' "$OUT" > "$tmp"
 else
@@ -68,10 +68,10 @@ fi
 # Append injected wallpaper block (dimmed copy)
 {
   echo ""
-  echo "# --- MazyShell Wallpaper Start ---"
+  echo "# --- m4.shell Wallpaper Start ---"
   echo "image=$dimmed"
   echo "scaling=fill"
-  echo "# --- MazyShell Wallpaper End ---"
+  echo "# --- m4.shell Wallpaper End ---"
 } >> "$tmp"
 
 mv -f "$tmp" "$OUT"

@@ -41,7 +41,7 @@ Item {
         return comps.join(", ") || fallback;
     }
 
-    readonly property string ctl: "$HOME/.config/quickshell/MazyShell/scripts/powerctl.sh"
+    readonly property string ctl: "$HOME/.config/quickshell/m4.shell/scripts/powerctl.sh"
 
     property string uiProfile: ""
 

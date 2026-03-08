@@ -19,7 +19,7 @@ PanelWindow {
     focusable: false
 
     WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.namespace: "mazyshell:bar:" + (screenRef && screenRef.name !== undefined ? String(screenRef.name) : "default")
+    WlrLayershell.namespace: "m4.shell:bar:" + (screenRef && screenRef.name !== undefined ? String(screenRef.name) : "default")
 
     function pick(a, b, fallback) { return (a !== undefined) ? a : ((b !== undefined) ? b : fallback) }
 

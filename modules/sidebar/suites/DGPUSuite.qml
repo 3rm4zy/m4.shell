@@ -24,7 +24,7 @@ Item {
     implicitHeight: box.implicitHeight
     implicitWidth: 260
 
-    readonly property string ctl: "$HOME/.config/quickshell/MazyShell/scripts/dgpuctl.sh"
+    readonly property string ctl: "$HOME/.config/quickshell/m4.shell/scripts/dgpuctl.sh"
 
     property string uiMode: ""
 

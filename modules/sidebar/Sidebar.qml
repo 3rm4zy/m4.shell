@@ -14,7 +14,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.exclusiveZone: -1
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
-    WlrLayershell.namespace: "mazyshell:sidebar"
+    WlrLayershell.namespace: "m4.shell:sidebar"
 
     readonly property int ew: (config && config.sidebar && config.sidebar.edgeWidth !== undefined)
         ? config.sidebar.edgeWidth

@@ -49,7 +49,7 @@ FocusScope {
 
     Process { id: runner }
 
-    readonly property string ctl: "$HOME/.config/quickshell/MazyShell/scripts/networkctl.sh"
+    readonly property string ctl: "$HOME/.config/quickshell/m4.shell/scripts/networkctl.sh"
 
     function keepPanelHovered() {
         if (sidebarState && sidebarState.enterSidebar) sidebarState.enterSidebar()
