@@ -3,7 +3,6 @@ import Quickshell.Io
 
 FocusScope {
     id: root
-
     required property QtObject config
     property QtObject sidebarState: null
 
@@ -27,18 +26,13 @@ FocusScope {
 
     // Panels
     property bool connsExpanded: false
-    property bool addExpanded: false      // inline connection form
-    property bool keysExpanded: false     // keys list accordion
-    property bool keyMgrExpanded: false   // inline key manager form
+    property bool addExpanded: false
 
     // Models
     ListModel { id: connModel }
-    ListModel { id: keyModel }
 
     // Selection
     property string selectedConn: ""
-    property string selectedKeyLabel: ""
-    property string selectedKeyPath: ""
 
     // State
     property bool holdRefresh: false
@@ -53,15 +47,6 @@ FocusScope {
     property string formPort: "22"
     property string formKeyPath: ""
     property bool formKeyUseNone: false
-
-    // Key manager fields
-    property bool generatingKey: false
-    property bool editingKey: false
-    property string keyLabel: ""
-    property string keyPath: ""
-    property string keyComment: ""
-    property string genKeyName: ""
-    property string genKeyPassphrase: ""
 
     Timer {
         id: holdRefreshTimer
@@ -80,6 +65,7 @@ FocusScope {
     function keepPanelHovered() {
         if (sidebarState && sidebarState.enterSidebar) sidebarState.enterSidebar()
     }
+
     function releasePanelHover() { }
 
     function userInteracting() {
@@ -116,39 +102,23 @@ FocusScope {
 
     function refreshAll() {
         if (root.actionRunning) return
-        keysProc.exec(keysProc.command)
+        listProc.exec(listProc.command)
     }
+
     function _refreshSoon() { refreshTimer.restart() }
 
-    // --- Top button actions ---
+    // --- Top button action ---
     function toggleAdd() {
         root.userInteracting()
         root.addExpanded = !root.addExpanded
         if (root.addExpanded) {
-            root.keyMgrExpanded = false
             root.editingConn = false
             root.formName = ""
             root.formHost = ""
             root.formUser = ""
             root.formPort = "22"
-            root.formKeyPath = root.selectedKeyPath || ""
-            root.formKeyUseNone = (root.formKeyPath.length === 0)
-            root.lastError = ""
-        }
-    }
-
-    function toggleKeyMgr() {
-        root.userInteracting()
-        root.keyMgrExpanded = !root.keyMgrExpanded
-        if (root.keyMgrExpanded) {
-            root.addExpanded = false
-            root.editingKey = false
-            root.generatingKey = false
-            root.keyLabel = ""
-            root.keyPath = ""
-            root.keyComment = ""
-            root.genKeyName = ""
-            root.genKeyPassphrase = ""
+            root.formKeyPath = ""
+            root.formKeyUseNone = false
             root.lastError = ""
         }
     }
@@ -158,8 +128,6 @@ FocusScope {
         if (!modelObj) return
         root.userInteracting()
         root.addExpanded = true
-        root.keyMgrExpanded = false
-
         root.editingConn = true
         root.formName = modelObj.name || ""
         root.formHost = modelObj.host || ""
@@ -181,7 +149,6 @@ FocusScope {
 
         root.lastError = ""
         root.addExpanded = false
-
         clearHoldNow()
 
         runActionShell(
@@ -198,9 +165,7 @@ FocusScope {
         var nm = safeName(name)
         if (!nm.length || root.actionRunning) return
         root.lastError = ""
-
         clearHoldNow()
-
         runActionShell(root.ctl + " del " + quote(nm))
     }
 
@@ -208,90 +173,15 @@ FocusScope {
         if (!modelObj) return
         var host = String(modelObj.host || "").trim()
         if (!host.length) return
-
         var user = String(modelObj.user || "").trim()
         var port = String(modelObj.port || "").trim()
         var keyp = String(modelObj.key || "").trim()
-
         var dest = user.length ? (user + "@" + host) : host
-
         var cmd = "ssh "
         if (port.length) cmd += "-p " + quote(port) + " "
         if (keyp.length) cmd += "-i " + quote(keyp) + " -o IdentitiesOnly=yes "
         cmd += quote(dest)
-
         shTerm(cmd)
-    }
-
-    // --- Key ops ---
-    function selectKey(modelObj) {
-        if (!modelObj) return
-        root.selectedKeyLabel = modelObj.label
-        root.selectedKeyPath = modelObj.path
-    }
-
-    function openEditKey(modelObj) {
-        if (!modelObj) return
-        root.userInteracting()
-        root.keyMgrExpanded = true
-        root.addExpanded = false
-
-        root.editingKey = true
-        root.generatingKey = false
-        root.keyLabel = modelObj.label || ""
-        root.keyPath = modelObj.path || ""
-        root.keyComment = ""
-        root.genKeyName = ""
-        root.genKeyPassphrase = ""
-        root.lastError = ""
-    }
-
-    function addOrUpdateExistingKey() {
-        var label = safeName(root.keyLabel)
-        var path = String(root.keyPath || "").trim()
-        if (!label.length) { root.lastError = "Key label is required"; return }
-        if (!path.length) { root.lastError = "Key path is required"; return }
-
-        root.lastError = ""
-        root.keyMgrExpanded = false
-
-        // key_add overwrites existing label in keys.db (update behavior)
-        clearHoldNow()
-
-        runActionShell(root.ctl + " key_add " + quote(label) + " " + quote(path))
-    }
-
-    function genNewKey() {
-        var label = safeName(root.keyLabel)
-        var fname = String(root.genKeyName || "").trim()
-        var comment = String(root.keyComment || "").trim()
-        var pass = String(root.genKeyPassphrase || "")
-
-        if (!label.length) { root.lastError = "Key label is required"; return }
-        if (!fname.length) { root.lastError = "Filename is required"; return }
-
-        root.lastError = ""
-        root.keyMgrExpanded = false
-
-        clearHoldNow()
-
-        runActionShell(
-            root.ctl + " key_gen "
-                + quote(label) + " "
-                + quote(fname) + " "
-                + quote(comment) + " "
-                + quote(pass)
-        )
-    }
-
-    function deleteKey(label) {
-        var lb = safeName(label)
-        if (!lb.length || root.actionRunning) return
-        root.lastError = ""
-
-        clearHoldNow()
-
-        runActionShell(root.ctl + " key_del " + quote(lb))
     }
 
     // Processes
@@ -305,64 +195,16 @@ FocusScope {
                 var out = (this.text || "")
                 var m = out.match(/__EC:(\d+)/)
                 var ec = m ? parseInt(m[1]) : 999
-
                 var tail = out.trim().split("\n")
                 tail = tail.slice(Math.max(0, tail.length - 10)).join("\n")
-
                 root.actionRunning = false
                 clearHoldNow()
-
                 if (ec === 0) {
                     root.lastError = ""
                 } else {
                     root.lastError = tail.length ? tail : ("sshctl failed (" + ec + ")")
                 }
-
                 root.refreshAll()
-            }
-        }
-    }
-
-    Process {
-        id: keysProc
-        command: ["sh", "-lc", root.ctl + " key_list"]
-        stdout: StdioCollector {
-            waitForEnd: true
-            onStreamFinished: {
-                if (root.holdRefresh || root.actionRunning) return
-
-                keyModel.clear()
-                var out = (this.text || "").trim()
-                if (out.length) {
-                    var lines = out.split("\n").map(function(s){ return s.trim() }).filter(function(s){ return !!s })
-                    for (var i = 0; i < lines.length; i++) {
-                        var parts = lines[i].split("|")
-                        var label = (parts.length > 0) ? parts[0] : ""
-                        var path  = (parts.length > 1) ? parts.slice(1).join("|") : ""
-                        keyModel.append({ label: label, path: path })
-                    }
-                }
-
-                // keep selection stable
-                var found = false
-                for (var j = 0; j < keyModel.count; j++) {
-                    if (keyModel.get(j).label === root.selectedKeyLabel) {
-                        root.selectedKeyPath = keyModel.get(j).path
-                        found = true
-                        break
-                    }
-                }
-                if (!found) {
-                    if (keyModel.count > 0) {
-                        root.selectedKeyLabel = keyModel.get(0).label
-                        root.selectedKeyPath = keyModel.get(0).path
-                    } else {
-                        root.selectedKeyLabel = ""
-                        root.selectedKeyPath = ""
-                    }
-                }
-
-                listProc.exec(listProc.command)
             }
         }
     }
@@ -374,11 +216,9 @@ FocusScope {
             waitForEnd: true
             onStreamFinished: {
                 if (root.holdRefresh || root.actionRunning) return
-
                 connModel.clear()
                 var out = (this.text || "").trim()
                 if (!out.length) { root.selectedConn = ""; return }
-
                 var lines = out.split("\n").map(function(s){ return s.trim() }).filter(function(s){ return !!s })
                 for (var i = 0; i < lines.length; i++) {
                     var p = lines[i].split("|")
@@ -390,7 +230,6 @@ FocusScope {
                         key:  (p.length > 4) ? p.slice(4).join("|") : ""
                     })
                 }
-
                 var hasSel = false
                 for (var j = 0; j < connModel.count; j++) {
                     if (connModel.get(j).name === root.selectedConn) { hasSel = true; break }
@@ -422,7 +261,6 @@ FocusScope {
         id: box
         width: parent ? parent.width : root.implicitWidth
         implicitHeight: col.implicitHeight + (root.pad * 2)
-
         radius: root.radius
         antialiasing: true
         color: root.bg2
@@ -442,9 +280,7 @@ FocusScope {
                 width: parent.width
                 height: 18
                 spacing: 6
-
                 Text { text: "SSH Suite"; color: root.text; font.pixelSize: 13; verticalAlignment: Text.AlignVCenter }
-
                 Text {
                     visible: root.actionRunning || (root.lastError.length > 0)
                     text: root.actionRunning ? "Working..." : ("Error: " + root.lastError)
@@ -455,320 +291,7 @@ FocusScope {
                 }
             }
 
-            // Add / Keys row (hover fixed)
-            Row {
-                width: parent.width
-                height: root.rowH
-                spacing: 10
-
-                readonly property int leftW: Math.floor((width - spacing) * 0.5)
-                readonly property int rightW: (width - spacing) - leftW
-
-                Rectangle {
-                    id: addBtn
-                    width: parent.leftW
-                    height: parent.height
-                    radius: 10
-                    color: root.bg
-                    border.width: 1
-                    border.color: root.borderColor
-                    property bool hovered: false
-
-                    Row {
-                        anchors.centerIn: parent
-                        height: parent.height
-                        spacing: 8
-                        Text { height: parent.height; text: ""; color: addBtn.hovered ? root.red : root.text; font.pixelSize: 14; verticalAlignment: Text.AlignVCenter }
-                        Text { height: parent.height; text: "Add"; color: addBtn.hovered ? root.red : root.text; font.pixelSize: 12; verticalAlignment: Text.AlignVCenter }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        propagateComposedEvents: true
-                        onEntered: { addBtn.hovered = true; root.keepPanelHovered() }
-                        onExited:  { addBtn.hovered = false; root.releasePanelHover() }
-                        onPressed: root.userInteracting()
-                        onClicked: root.toggleAdd()
-                    }
-                }
-
-                Rectangle {
-                    id: keysBtn
-                    width: parent.rightW
-                    height: parent.height
-                    radius: 10
-                    color: root.bg
-                    border.width: 1
-                    border.color: root.borderColor
-                    property bool hovered: false
-
-                    Row {
-                        anchors.centerIn: parent
-                        height: parent.height
-                        spacing: 8
-                        Text { height: parent.height; text: "󰌆"; color: keysBtn.hovered ? root.red : root.text; font.pixelSize: 14; verticalAlignment: Text.AlignVCenter }
-                        Text { height: parent.height; text: "Keys"; color: keysBtn.hovered ? root.red : root.text; font.pixelSize: 12; verticalAlignment: Text.AlignVCenter }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        propagateComposedEvents: true
-                        onEntered: { keysBtn.hovered = true; root.keepPanelHovered() }
-                        onExited:  { keysBtn.hovered = false; root.releasePanelHover() }
-                        onPressed: root.userInteracting()
-                        onClicked: root.toggleKeyMgr()
-                    }
-                }
-            }
-
-            // Inline: Add connection panel (pushes content down)
-            Rectangle {
-                id: addPanel
-                width: parent.width
-                radius: 10
-                color: root.bg
-                border.width: 1
-                border.color: root.borderColor
-                clip: true
-                readonly property int headerH: 0
-                readonly property int bodyH: addCol.implicitHeight + 12
-
-                height: root.addExpanded ? bodyH : 0
-                visible: height > 0
-                Behavior on height { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
-
-                Column {
-                    id: addCol
-                    x: 10
-                    y: 8
-                    width: parent.width - 20
-                    spacing: 8
-
-                    Text { text: root.editingConn ? "Edit connection" : "New connection"; color: root.text; font.pixelSize: 12 }
-
-                    Text { text: "Name"; color: root.muted; font.pixelSize: 11 }
-                    Rectangle {
-                        width: parent.width; height: 34; radius: 10
-                        color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
-                        TextInput {
-                            id: connName
-                            anchors.fill: parent
-                            anchors.leftMargin: 10; anchors.rightMargin: 10
-                            color: root.text; font.pixelSize: 12
-                            verticalAlignment: TextInput.AlignVCenter
-                            selectByMouse: true
-                            text: root.formName
-                            onTextChanged: root.formName = text
-                            validator: RegularExpressionValidator { regularExpression: /[A-Za-z0-9_.-]{0,48}/ }
-                        }
-                    }
-
-                    Text { text: "Host"; color: root.muted; font.pixelSize: 11 }
-                    Rectangle {
-                        width: parent.width; height: 34; radius: 10
-                        color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
-                        TextInput {
-                            id: connHost
-                            anchors.fill: parent
-                            anchors.leftMargin: 10; anchors.rightMargin: 10
-                            color: root.text; font.pixelSize: 12
-                            verticalAlignment: TextInput.AlignVCenter
-                            selectByMouse: true
-                            text: root.formHost
-                            onTextChanged: root.formHost = text
-                        }
-                    }
-
-                    Row {
-                        width: parent.width
-                        height: 34
-                        spacing: 8
-                        topPadding: 8
-                        Column {
-                            width: (parent.width - 8) * 0.62
-                            spacing: 4
-                            Text { text: "User"; color: root.muted; font.pixelSize: 11 }
-                            Rectangle {
-                                width: parent.width; height: 34; radius: 10
-                                color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
-                                TextInput {
-                                    id: connUser
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 10; anchors.rightMargin: 10
-                                    color: root.text; font.pixelSize: 12
-                                    verticalAlignment: TextInput.AlignVCenter
-                                    selectByMouse: true
-                                    text: root.formUser
-                                    onTextChanged: root.formUser = text
-                                }
-                            }
-                        }
-
-                        Column {
-                            width: (parent.width - 8) * 0.38
-                            spacing: 4
-                            Text { text: "Port"; color: root.muted; font.pixelSize: 11 }
-                            Rectangle {
-                                width: parent.width; height: 34; radius: 10
-                                color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
-                                TextInput {
-                                    id: connPort
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 10; anchors.rightMargin: 10
-                                    color: root.text; font.pixelSize: 12
-                                    verticalAlignment: TextInput.AlignVCenter
-                                    selectByMouse: true
-                                    text: root.formPort
-                                    onTextChanged: root.formPort = text
-                                    validator: RegularExpressionValidator { regularExpression: /[0-9]{0,5}/ }
-                                }
-                            }
-                        }
-                    }
-
-                    Row {
-                        width: parent.width
-                        topPadding: 32
-                        height: 42
-                        spacing: 8
-                        Text { text: root.selectedKeyLabel.length ? ("Key Selected: " + root.selectedKeyLabel) : "Key Selected: none"; color: root.muted; font.pixelSize: 11 }
-                    }
-
-                    Rectangle {
-                        width: parent.width; height: 34; radius: 10
-                        color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
-                        opacity: root.formKeyUseNone ? 0.6 : 1.0
-
-                        TextInput {
-                            id: connKeyPath
-                            anchors.fill: parent
-                            anchors.leftMargin: 10; anchors.rightMargin: 10
-                            enabled: !root.formKeyUseNone
-                            color: root.text; font.pixelSize: 12
-                            verticalAlignment: TextInput.AlignVCenter
-                            selectByMouse: true
-                            text: root.formKeyPath
-                            onTextChanged: root.formKeyPath = text
-                        }
-                        Loader {
-                            anchors.centerIn: parent
-                            visible: !root.formKeyUseNone
-                            sourceComponent: placeholderTextComp
-                            onLoaded: { item.input = connKeyPath; item.text = "e.g. ~/.ssh/id_ed25519" }
-                        }
-                    }
-
-                    Row {
-                        width: parent.width
-                        height: 36
-                        spacing: 8
-
-                        Rectangle {
-                            width: 84; height: 24; radius: 10
-                            color: root.bg2
-                            border.width: 1
-                            border.color: root.borderColor
-                            property bool hovered: false
-
-                            Text { anchors.centerIn: parent; text: root.formKeyUseNone ? "Key: none" : "Use key"; color: parent.hovered ? root.red : root.text; font.pixelSize: 11 }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onEntered: { parent.hovered = true; root.keepPanelHovered() }
-                                onExited:  { parent.hovered = false; root.releasePanelHover() }
-                                onPressed: root.userInteracting()
-                                onClicked: {
-                                    root.formKeyUseNone = !root.formKeyUseNone
-                                    if (!root.formKeyUseNone && !root.formKeyPath.length && root.selectedKeyPath.length)
-                                        root.formKeyPath = root.selectedKeyPath
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            width: 120; height: 24; radius: 10
-                            color: root.bg2
-                            border.width: 1
-                            border.color: root.borderColor
-                            property bool hovered: false
-                            opacity: (!root.formKeyUseNone && root.selectedKeyPath.length > 0) ? 1.0 : 0.6
-
-                            Text { anchors.centerIn: parent; text: "Use selected"; color: parent.hovered ? root.red : root.text; font.pixelSize: 11 }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                enabled: (!root.formKeyUseNone && root.selectedKeyPath.length > 0)
-                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                onEntered: { parent.hovered = true; root.keepPanelHovered() }
-                                onExited:  { parent.hovered = false; root.releasePanelHover() }
-                                onPressed: root.userInteracting()
-                                onClicked: { if (root.selectedKeyPath.length) root.formKeyPath = root.selectedKeyPath }
-                            }
-                        }
-                    }
-
-                    Row {
-                        width: parent.width
-                        height: 32
-                        spacing: 8
-
-                        Rectangle {
-                            id: addCancel
-                            width: (parent.width - 8) / 2
-                            height: parent.height
-                            radius: 10
-                            color: root.bg2
-                            border.width: 1
-                            border.color: root.borderColor
-                            property bool hovered: false
-
-                            Text { anchors.centerIn: parent; text: "Cancel"; color: addCancel.hovered ? root.red : root.muted; font.pixelSize: 12 }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onEntered: addCancel.hovered = true
-                                onExited:  addCancel.hovered = false
-                                onPressed: root.userInteracting()
-                                onClicked: root.addExpanded = false
-                            }
-                        }
-
-                        Rectangle {
-                            id: addSave
-                            width: (parent.width - 8) / 2
-                            height: parent.height
-                            radius: 10
-                            color: root.bg2
-                            border.width: 1
-                            border.color: root.borderColor
-                            property bool hovered: false
-
-                            Text { anchors.centerIn: parent; text: root.editingConn ? "Save" : "Create"; color: addSave.hovered ? root.red : root.text; font.pixelSize: 12 }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onEntered: addSave.hovered = true
-                                onExited:  addSave.hovered = false
-                                onPressed: root.userInteracting()
-                                onClicked: root.saveConn()
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Connections accordion (restored)
+            // Connections accordion
             Rectangle {
                 id: connShell
                 width: parent.width
@@ -777,10 +300,8 @@ FocusScope {
                 border.width: 1
                 border.color: root.borderColor
                 clip: true
-
                 readonly property int headerH: 30
                 readonly property int bodyH: connCol.implicitHeight + 8
-
                 height: root.connsExpanded ? (headerH + bodyH) : headerH
                 Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
 
@@ -788,17 +309,14 @@ FocusScope {
                     width: parent.width
                     height: connShell.headerH
                     color: "transparent"
-
                     Row {
                         anchors.fill: parent
                         anchors.leftMargin: 10
                         anchors.rightMargin: 10
                         spacing: 10
-
                         Text { width: 16; height: parent.height; text: root.connsExpanded ? "󰅀" : "󰅂"; color: root.muted; font.pixelSize: 14; verticalAlignment: Text.AlignVCenter }
                         Text { height: parent.height; text: "Connections"; color: root.muted; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter }
                     }
-
                     MouseArea {
                         anchors.fill: parent
                         hoverEnabled: true
@@ -891,9 +409,7 @@ FocusScope {
                                         border.color: editBtn.hovered ? root.red : root.borderColor
                                         property bool hovered: false
                                         id: editBtn
-
                                         Text { anchors.centerIn: parent; text: "Edit"; color: editBtn.hovered ? root.red : root.text; font.pixelSize: 11 }
-
                                         MouseArea {
                                             anchors.fill: parent
                                             hoverEnabled: true
@@ -916,9 +432,7 @@ FocusScope {
                                         border.color: delBtn.hovered ? root.red : root.borderColor
                                         property bool hovered: false
                                         id: delBtn
-
                                         Text { anchors.centerIn: parent; text: "Del"; color: delBtn.hovered ? root.red : root.text; font.pixelSize: 11 }
-
                                         MouseArea {
                                             anchors.fill: parent
                                             hoverEnabled: true
@@ -946,421 +460,217 @@ FocusScope {
                 }
             }
 
-            // Inline key manager panel (pushes content down)
+            // Add button
             Rectangle {
-                id: keyMgrPanel
+                id: addBtn
+                width: parent.width
+                height: root.rowH
+                radius: 10
+                color: root.bg
+                border.width: 1
+                border.color: root.borderColor
+                property bool hovered: false
+
+                Row {
+                    anchors.centerIn: parent
+                    height: parent.height
+                    spacing: 8
+                    Text { height: parent.height; text: ""; color: addBtn.hovered ? root.red : root.text; font.pixelSize: 14; verticalAlignment: Text.AlignVCenter }
+                    Text { height: parent.height; text: "Add Connection"; color: addBtn.hovered ? root.red : root.text; font.pixelSize: 12; verticalAlignment: Text.AlignVCenter }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    propagateComposedEvents: true
+                    onEntered: { addBtn.hovered = true; root.keepPanelHovered() }
+                    onExited:  { addBtn.hovered = false; root.releasePanelHover() }
+                    onPressed: root.userInteracting()
+                    onClicked: root.toggleAdd()
+                }
+            }
+
+            // Inline: Add connection Panels
+            Rectangle {
+                id: addPanel
                 width: parent.width
                 radius: 10
                 color: root.bg
                 border.width: 1
                 border.color: root.borderColor
                 clip: true
-
-                readonly property int bodyH: keyMgrCol.implicitHeight + 12
-
-                height: root.keyMgrExpanded ? bodyH : 0
+                readonly property int bodyH: addCol.implicitHeight + 12
+                height: root.addExpanded ? bodyH : 0
                 visible: height > 0
                 Behavior on height { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
 
                 Column {
-                    id: keyMgrCol
+                    id: addCol
                     x: 10
                     y: 8
                     width: parent.width - 20
                     spacing: 8
 
-                    Text { text: "Key manager"; color: root.text; font.pixelSize: 12 }
-
-                    Row {
-                        width: parent.width
-                        height: 24
-                        spacing: 8
-
-                        Rectangle {
-                            width: (parent.width - 8) / 2
-                            height: 24
-                            radius: 10
-                            color: root.bg2
-                            border.width: 1
-                            border.color: root.borderColor
-
-                            Text { anchors.centerIn: parent; text: "Add existing"; color: (!root.generatingKey) ? root.red : root.text; font.pixelSize: 11 }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onPressed: root.userInteracting()
-                                onClicked: { root.generatingKey = false; root.editingKey = false; root.lastError = "" }
-                            }
-                        }
-
-                        Rectangle {
-                            width: (parent.width - 8) / 2
-                            height: 24
-                            radius: 10
-                            color: root.bg2
-                            border.width: 1
-                            border.color: root.borderColor
-
-                            Text { anchors.centerIn: parent; text: "Generate new"; color: (root.generatingKey) ? root.red : root.text; font.pixelSize: 11 }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onPressed: root.userInteracting()
-                                onClicked: { root.generatingKey = true; root.editingKey = false; root.lastError = "" }
-                            }
-                        }
+                    Text { 
+                        text: root.editingConn ? "Edit connection" : "New connection"
+                        color: root.text
+                        font.pixelSize: 12 
                     }
 
-                    Text { text: "Key label"; color: root.muted; font.pixelSize: 11 }
+                    // Name
+                    Text { text: "Name"; color: root.muted; font.pixelSize: 11 }
                     Rectangle {
                         width: parent.width; height: 34; radius: 10
                         color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
                         TextInput {
-                            id: keyLabelInput
+                            id: connName
                             anchors.fill: parent
                             anchors.leftMargin: 10; anchors.rightMargin: 10
                             color: root.text; font.pixelSize: 12
                             verticalAlignment: TextInput.AlignVCenter
                             selectByMouse: true
-                            text: root.keyLabel
-                            onTextChanged: root.keyLabel = text
+                            text: root.formName
+                            onTextChanged: root.formName = text
                             validator: RegularExpressionValidator { regularExpression: /[A-Za-z0-9_.-]{0,48}/ }
                         }
                     }
 
-                    Column {
-                        width: parent.width
-                        spacing: 6
-                        visible: !root.generatingKey
+                    // Host
+                    Text { text: "Host"; color: root.muted; font.pixelSize: 11 }
+                    Rectangle {
+                        width: parent.width; height: 34; radius: 10
+                        color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
+                        TextInput {
+                            id: connHost
+                            anchors.fill: parent
+                            anchors.leftMargin: 10; anchors.rightMargin: 10
+                            color: root.text; font.pixelSize: 12
+                            verticalAlignment: TextInput.AlignVCenter
+                            selectByMouse: true
+                            text: root.formHost
+                            onTextChanged: root.formHost = text
+                        }
+                    }
 
-                        Text { text: "Private key path"; color: root.muted; font.pixelSize: 11 }
-                        Rectangle {
-                            width: parent.width; height: 34; radius: 10
-                            color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
-                            TextInput {
-                                id: keyPathInput
-                                anchors.fill: parent
-                                anchors.leftMargin: 10; anchors.rightMargin: 10
-                                color: root.text; font.pixelSize: 12
-                                verticalAlignment: TextInput.AlignVCenter
-                                selectByMouse: true
-                                text: root.keyPath
-                                onTextChanged: root.keyPath = text
+                    // User & Port
+                    Row {
+                        width: parent.width
+                        spacing: 8
+
+                        Column {
+                            width: (parent.width - 8) * 0.62
+                            spacing: 4
+                            Text { text: "User"; color: root.muted; font.pixelSize: 11 }
+                            Rectangle {
+                                width: parent.width; height: 34; radius: 10
+                                color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
+                                TextInput {
+                                    id: connUser
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10; anchors.rightMargin: 10
+                                    color: root.text; font.pixelSize: 12
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    selectByMouse: true
+                                    text: root.formUser
+                                    onTextChanged: root.formUser = text
+                                }
                             }
-                            Loader {
-                                anchors.fill: parent
-                                sourceComponent: placeholderTextComp
-                                onLoaded: { item.input = keyPathInput; item.text = "e.g. ~/.ssh/id_ed25519" }
+                        }
+
+                        Column {
+                            width: (parent.width - 8) * 0.38
+                            spacing: 4
+                            Text { text: "Port"; color: root.muted; font.pixelSize: 11 }
+                            Rectangle {
+                                width: parent.width; height: 34; radius: 10
+                                color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
+                                TextInput {
+                                    id: connPort
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10; anchors.rightMargin: 10
+                                    color: root.text; font.pixelSize: 12
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    selectByMouse: true
+                                    text: root.formPort
+                                    onTextChanged: root.formPort = text
+                                    validator: RegularExpressionValidator { regularExpression: /[0-9]{0,5}/ }
+                                }
                             }
                         }
                     }
 
-                    Column {
-                        width: parent.width
-                        spacing: 6
-                        visible: root.generatingKey
-
-                        Text { text: "Filename (stored in ~/.config/quickshell/m4.shell/ssh/keys/)"; color: root.muted; font.pixelSize: 11 }
-                        Rectangle {
-                            width: parent.width; height: 34; radius: 10
-                            color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
-                            TextInput {
-                                id: genNameInput
-                                anchors.fill: parent
-                                anchors.leftMargin: 10; anchors.rightMargin: 10
-                                color: root.text; font.pixelSize: 12
-                                verticalAlignment: TextInput.AlignVCenter
-                                selectByMouse: true
-                                text: root.genKeyName
-                                onTextChanged: root.genKeyName = text
-                                validator: RegularExpressionValidator { regularExpression: /[A-Za-z0-9_.-]{0,64}/ }
-                            }
-                            Loader {
-                                anchors.fill: parent
-                                sourceComponent: placeholderTextComp
-                                onLoaded: { item.input = genNameInput; item.text = "e.g. homelab_ed25519" }
-                            }
+                    // Private key section
+                    Text { text: "Key"; color: root.muted; font.pixelSize: 11 }
+                    Rectangle {
+                        width: parent.width; height: 34; radius: 10
+                        color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
+                        opacity: root.formKeyUseNone ? 0.6 : 1.0
+                        TextInput {
+                            id: connKeyPath
+                            anchors.fill: parent
+                            anchors.leftMargin: 10; anchors.rightMargin: 10
+                            enabled: !root.formKeyUseNone
+                            color: root.text; font.pixelSize: 12
+                            verticalAlignment: TextInput.AlignVCenter
+                            selectByMouse: true
+                            text: root.formKeyPath
+                            onTextChanged: root.formKeyPath = text
                         }
-
-                        Text { text: "Comment (optional)"; color: root.muted; font.pixelSize: 11 }
-                        Rectangle {
-                            width: parent.width; height: 34; radius: 10
-                            color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
-                            TextInput {
-                                id: keyCommentInput
-                                anchors.fill: parent
-                                anchors.leftMargin: 10; anchors.rightMargin: 10
-                                color: root.text; font.pixelSize: 12
-                                verticalAlignment: TextInput.AlignVCenter
-                                selectByMouse: true
-                                text: root.keyComment
-                                onTextChanged: root.keyComment = text
-                            }
-                            Loader {
-                                anchors.fill: parent
-                                sourceComponent: placeholderTextComp
-                                onLoaded: { item.input = keyCommentInput; item.text = "e.g. ethan@m4.shell" }
-                            }
-                        }
-
-                        Text { text: "Passphrase (optional; blank = none)"; color: root.muted; font.pixelSize: 11 }
-                        Rectangle {
-                            width: parent.width; height: 34; radius: 10
-                            color: root.bg2; border.width: 1; border.color: root.borderColor; clip: true
-                            TextInput {
-                                id: passInput
-                                anchors.fill: parent
-                                anchors.leftMargin: 10; anchors.rightMargin: 10
-                                color: root.text
-                                echoMode: TextInput.Password
-                                font.pixelSize: 12
-                                verticalAlignment: TextInput.AlignVCenter
-                                selectByMouse: true
-                                text: root.genKeyPassphrase
-                                onTextChanged: root.genKeyPassphrase = text
-                            }
+                        Loader {
+                            anchors.centerIn: parent
+                            visible: !root.formKeyUseNone
+                            sourceComponent: placeholderTextComp
+                            onLoaded: { item.input = connKeyPath; item.text = "e.g. ~/.ssh/id_ed25519" }
                         }
                     }
 
+                    // Cancel & Create buttons
                     Row {
                         width: parent.width
                         height: 32
                         spacing: 8
 
                         Rectangle {
+                            id: addCancel
                             width: (parent.width - 8) / 2
                             height: parent.height
                             radius: 10
                             color: root.bg2
                             border.width: 1
                             border.color: root.borderColor
-
-                            Text { anchors.centerIn: parent; text: "Cancel"; color: root.muted; font.pixelSize: 12 }
-
+                            property bool hovered: false
+                            Text { anchors.centerIn: parent; text: "Cancel"; color: addCancel.hovered ? root.red : root.muted; font.pixelSize: 12 }
                             MouseArea {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
+                                onEntered: addCancel.hovered = true
+                                onExited:  addCancel.hovered = false
                                 onPressed: root.userInteracting()
-                                onClicked: root.keyMgrExpanded = false
+                                onClicked: root.addExpanded = false
                             }
                         }
 
                         Rectangle {
+                            id: addSave
                             width: (parent.width - 8) / 2
                             height: parent.height
                             radius: 10
                             color: root.bg2
                             border.width: 1
                             border.color: root.borderColor
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: root.generatingKey ? "Generate" : (root.editingKey ? "Save" : "Add")
-                                color: root.text
-                                font.pixelSize: 12
-                            }
-
+                            property bool hovered: false
+                            Text { anchors.centerIn: parent; text: root.editingConn ? "Save" : "Create"; color: addSave.hovered ? root.red : root.text; font.pixelSize: 12 }
                             MouseArea {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
+                                onEntered: addSave.hovered = true
+                                onExited:  addSave.hovered = false
                                 onPressed: root.userInteracting()
-                                onClicked: {
-                                    if (root.generatingKey) root.genNewKey()
-                                    else root.addOrUpdateExistingKey()
-                                }
+                                onClicked: root.saveConn()
                             }
-                        }
-                    }
-                }
-            }
-
-            // Keys accordion (list + select + edit + delete)
-            Rectangle {
-                id: keyShell
-                width: parent.width
-                radius: 10
-                color: root.bg
-                border.width: 1
-                border.color: root.borderColor
-                clip: true
-
-                readonly property int headerH: 30
-                readonly property int bodyH: keyCol.implicitHeight + 8
-
-                height: root.keysExpanded ? (headerH + bodyH) : headerH
-                Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
-
-                Rectangle {
-                    width: parent.width
-                    height: keyShell.headerH
-                    color: "transparent"
-
-                    Row {
-                        anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 10
-                        spacing: 8
-
-                        Text { width: 16; height: parent.height; text: root.keysExpanded ? "󰅀" : "󰅂"; color: root.muted; font.pixelSize: 14; verticalAlignment: Text.AlignVCenter }
-                        Text { height: parent.height; text: "Keys"; color: root.muted; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter }
-                        Text {
-                            height: parent.height
-                            text: root.selectedKeyLabel.length ? ("Selected: " + root.selectedKeyLabel) : "Selected: none"
-                            color: root.muted
-                            font.pixelSize: 10
-                            verticalAlignment: Text.AlignVCenter
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onEntered: root.userInteracting()
-                        onPressed: root.userInteracting()
-                        onClicked: {
-                            root.keysExpanded = !root.keysExpanded
-                            if (root.keysExpanded) root.refreshAll()
-                        }
-                    }
-                }
-
-                Item {
-                    x: 0
-                    y: keyShell.headerH
-                    width: keyShell.width
-                    height: root.keysExpanded ? keyShell.bodyH : 0
-                    clip: true
-                    Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
-
-                    Column {
-                        id: keyCol
-                        x: 4
-                        y: 4
-                        width: parent.width - 8
-                        spacing: 2
-
-                        Repeater {
-                            model: keyModel
-                            delegate: Rectangle {
-                                width: parent.width
-                                height: 30
-                                radius: 8
-                                color: root.bg
-
-                                Row {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 10
-                                    anchors.rightMargin: 10
-                                    spacing: 8
-
-                                    Rectangle {
-                                        width: parent.width - 92
-                                        height: 30
-                                        radius: 8
-                                        color: keyRow.hovered ? root.bg2 : root.bg
-                                        property bool hovered: false
-                                        id: keyRow
-
-                                        Text {
-                                            width: 16
-                                            height: parent.height
-                                            text: (root.selectedKeyLabel === model.label) ? "" : "󰌋"
-                                            color: (root.selectedKeyLabel === model.label) ? root.red : root.muted
-                                            font.pixelSize: 14
-                                            verticalAlignment: Text.AlignVCenter
-                                            leftPadding: 5
-                                        }
-
-                                        Text {
-                                            height: parent.height
-                                            text: model.label
-                                            color: root.text
-                                            font.pixelSize: 12
-                                            verticalAlignment: Text.AlignVCenter
-                                            elide: Text.ElideRight
-                                            leftPadding: 25
-                                        }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            enabled: !root.actionRunning
-                                            onEntered: { keyRow.hovered = true; root.keepPanelHovered() }
-                                            onExited:  { keyRow.hovered = false; root.releasePanelHover() }
-                                            onPressed: root.userInteracting()
-                                            onClicked: root.selectKey(model)
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        width: 42
-                                        height: 24
-                                        y: 3
-                                        radius: 10
-                                        color: root.bg2
-                                        border.width: 1
-                                        border.color: kEdit.hovered ? root.red : root.borderColor
-                                        property bool hovered: false
-                                        id: kEdit
-
-                                        Text { anchors.centerIn: parent; text: "Edit"; color: kEdit.hovered ? root.red : root.text; font.pixelSize: 11 }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            enabled: !root.actionRunning
-                                            onEntered: { kEdit.hovered = true; root.keepPanelHovered() }
-                                            onExited:  { kEdit.hovered = false; root.releasePanelHover() }
-                                            onPressed: root.userInteracting()
-                                            onClicked: root.openEditKey(model)
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        width: 42
-                                        height: 24
-                                        y: 3
-                                        radius: 10
-                                        color: root.bg2
-                                        border.width: 1
-                                        border.color: kDel.hovered ? root.red : root.borderColor
-                                        property bool hovered: false
-                                        id: kDel
-
-                                        Text { anchors.centerIn: parent; text: "Del"; color: kDel.hovered ? root.red : root.text; font.pixelSize: 11 }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            enabled: !root.actionRunning
-                                            onEntered: { kDel.hovered = true; root.keepPanelHovered() }
-                                            onExited:  { kDel.hovered = false; root.releasePanelHover() }
-                                            onPressed: root.userInteracting()
-                                            onClicked: root.deleteKey(model.label)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Text {
-                            width: parent.width
-                            text: (keyModel.count === 0) ? "No keys registered" : ""
-                            color: root.muted
-                            font.pixelSize: 11
-                            visible: (keyModel.count === 0)
-                            wrapMode: Text.Wrap
                         }
                     }
                 }
