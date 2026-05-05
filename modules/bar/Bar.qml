@@ -89,6 +89,7 @@ PanelWindow {
 
     Workspaces {
         anchors.centerIn: parent
+        screenRef: root.screenRef
         themeRed: root.accent
         themeBg: root.bg2
         themeText: root.fg

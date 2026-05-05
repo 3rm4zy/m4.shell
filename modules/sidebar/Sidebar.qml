@@ -34,6 +34,15 @@ PanelWindow {
 
     readonly property real slide: sidebarState ? sidebarState.slide : 0
 
+    // Keep layer-shell surface size fixed at full travel so it is not resized every
+    // frame of the slide animation (resize + right-edge anchoring caused 60Hz jank
+    // and hover glitches). Input is limited to the real footprint via `mask` below.
+    readonly property int maxSlideW: (sidebarState && sidebarState.sidebarWidth !== undefined)
+        ? sidebarState.sidebarWidth
+        : ((config && config.sidebar && config.sidebar.sidebarWidth !== undefined)
+            ? config.sidebar.sidebarWidth
+            : 320)
+
     anchors {
         top: true
         bottom: true
@@ -43,7 +52,24 @@ PanelWindow {
 
     margins { top: barH - 1 }
 
-    implicitWidth: ew + slide + r
+    implicitWidth: ew + maxSlideW + r
+
+    // When the window is full width but slide < max, the open/close bundle must stay
+    // flush to the screen's physical edge: right-anchored — shift by (maxSlideW - slide).
+    readonly property real contentShiftX: (edgeSide === "right")
+        ? (maxSlideW - slide)
+        : 0
+    readonly property real activeFootprintW: Math.max(0, ew + slide + r)
+
+    Item {
+        id: inputMaskGeom
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        x: contentShiftX
+        width: activeFootprintW
+    }
+
+    mask: Region { item: inputMaskGeom }
 
     HoverHandler {
         id: rootHH
@@ -67,10 +93,11 @@ PanelWindow {
         if (!rootHH.hovered) return false
         const x = rootHH.point.position.x
         const s = Math.max(0, root.sidebarState.slide || 0)
-        const total = root.ew + s
-        if (root.edgeSide === "left")
-            return x >= 0 && x <= total
-        return x >= 0 && x <= root.width
+        const total = root.ew + s + root.r
+        const ox = (root.edgeSide === "right")
+            ? (root.maxSlideW - s)
+            : 0
+        return x >= ox && x <= ox + total
     }
 
     function syncOpenState() {
@@ -116,121 +143,127 @@ PanelWindow {
         }
     }
 
-    Rectangle {
-        id: edgeStrip
-        z: 3
-        x: (root.edgeSide === "left") ? 0 : (root.slide + root.r)
-        width: root.ew
+    Item {
+        id: contentBundle
+        x: contentShiftX
+        width: activeFootprintW
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        color: root.config.appearance.bg
-        opacity: root.config.appearance.opacity
-        HoverHandler {
-            grabPermissions: PointerHandler.TakeOverForbidden
-            onHoveredChanged: {
-                if (hovered && root.sidebarState)
-                    root.sidebarState.enterSidebar()
-            }
-        }
-    }
 
-    Item {
-        id: body
-        z: 2
-        x: (root.edgeSide === "left") ? root.ew : root.r
-        width: Math.max(0, root.slide)
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        clip: true
-        layer.enabled: true
-        layer.smooth: true
         Rectangle {
-            anchors.fill: parent
+            id: edgeStrip
+            z: 3
+            x: (root.edgeSide === "left") ? 0 : (root.slide + root.r)
+            width: root.ew
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
             color: root.config.appearance.bg
             opacity: root.config.appearance.opacity
-        }
-        SidebarMenu {
-            anchors.fill: parent
-            config: root.config
-            sidebarState: root.sidebarState
-            screen: root.screen
-        }
-    }
-
-    Item {
-        z: 4
-        width: r
-        height: r
-        x: (edgeSide === "left") ? (ew + slide) : 0
-        y: 0
-        layer.enabled: true
-        layer.smooth: true
-        Rectangle {
-            anchors.fill: parent
-            color: root.config.appearance.bg
-            opacity: root.config.appearance.opacity
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                maskEnabled: true
-                maskInverted: true
-                maskSource: topMask
-                maskThresholdMin: 0.5
-                maskSpreadAtMin: 1
+            HoverHandler {
+                grabPermissions: PointerHandler.TakeOverForbidden
+                onHoveredChanged: {
+                    if (hovered && root.sidebarState)
+                        root.sidebarState.enterSidebar()
+                }
             }
         }
+
         Item {
-            id: topMask
+            id: body
+            z: 2
+            x: (root.edgeSide === "left") ? root.ew : root.r
+            width: Math.max(0, root.slide)
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            clip: true
+            Rectangle {
+                anchors.fill: parent
+                color: root.config.appearance.bg
+                opacity: root.config.appearance.opacity
+            }
+            SidebarMenu {
+                anchors.fill: parent
+                config: root.config
+                sidebarState: root.sidebarState
+                screen: root.screen
+            }
+        }
+
+        Item {
+            z: 4
             width: r
             height: r
-            clip: true
-            visible: false
+            x: (edgeSide === "left") ? (ew + slide) : 0
+            y: 0
             layer.enabled: true
+            layer.smooth: true
             Rectangle {
-                width: 2 * r
-                height: 2 * r
-                radius: r
-                color: "white"
-                x: (edgeSide === "left") ? 0 : -r
-                y: 0
+                anchors.fill: parent
+                color: root.config.appearance.bg
+                opacity: root.config.appearance.opacity
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    maskEnabled: true
+                    maskInverted: true
+                    maskSource: topMask
+                    maskThresholdMin: 0.5
+                    maskSpreadAtMin: 1
+                }
+            }
+            Item {
+                id: topMask
+                width: r
+                height: r
+                clip: true
+                visible: false
+                layer.enabled: true
+                Rectangle {
+                    width: 2 * r
+                    height: 2 * r
+                    radius: r
+                    color: "white"
+                    x: (edgeSide === "left") ? 0 : -r
+                    y: 0
+                }
             }
         }
-    }
 
-    Item {
-        z: 4
-        width: r
-        height: r
-        anchors.bottom: parent.bottom
-        x: (edgeSide === "left") ? (ew + slide) : 0
-        layer.enabled: true
-        layer.smooth: true
-        Rectangle {
-            anchors.fill: parent
-            color: root.config.appearance.bg
-            opacity: root.config.appearance.opacity
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                maskEnabled: true
-                maskInverted: true
-                maskSource: bottomMask
-                maskThresholdMin: 0.5
-                maskSpreadAtMin: 1
-            }
-        }
         Item {
-            id: bottomMask
+            z: 4
             width: r
             height: r
-            clip: true
-            visible: false
+            anchors.bottom: parent.bottom
+            x: (edgeSide === "left") ? (ew + slide) : 0
             layer.enabled: true
+            layer.smooth: true
             Rectangle {
-                width: 2 * r
-                height: 2 * r
-                radius: r
-                color: "white"
-                x: (edgeSide === "left") ? 0 : -r
-                y: -r
+                anchors.fill: parent
+                color: root.config.appearance.bg
+                opacity: root.config.appearance.opacity
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    maskEnabled: true
+                    maskInverted: true
+                    maskSource: bottomMask
+                    maskThresholdMin: 0.5
+                    maskSpreadAtMin: 1
+                }
+            }
+            Item {
+                id: bottomMask
+                width: r
+                height: r
+                clip: true
+                visible: false
+                layer.enabled: true
+                Rectangle {
+                    width: 2 * r
+                    height: 2 * r
+                    radius: r
+                    color: "white"
+                    x: (edgeSide === "left") ? 0 : -r
+                    y: -r
+                }
             }
         }
     }

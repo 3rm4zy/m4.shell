@@ -13,18 +13,29 @@ Row {
     property string focusedText:"#0B0B0B"
     property int borderWidth: 1
 
+    property var screenRef: null
+
+    function shellSingleQuoted(s) {
+        return "'" + String(s).replace(/'/g, "'\\''") + "'"
+    }
+
+    readonly property string barOutputName: (screenRef && screenRef.name !== undefined)
+        ? String(screenRef.name)
+        : ""
+
     property string backend: "none"
 
     ListModel { id: wsModel }
 
     Process { id: focusProc }
 
-    Process {
-        id: wsProc
-        command: ["sh", "-lc",
-            "command -v python3 >/dev/null 2>&1 || { echo '{\"backend\":\"none\",\"workspaces\":[]}'; exit 0; }; " +
-            "python3 - <<'PY'\n" +
-            "import json, shutil, subprocess, sys\n" +
+    readonly property var wsProcCommand: ["sh", "-lc",
+        "export M4_BAR_OUTPUT=" + shellSingleQuoted(barOutputName) + "; " +
+        "command -v python3 >/dev/null 2>&1 || { echo '{\"backend\":\"none\",\"workspaces\":[]}'; exit 0; }; " +
+        "python3 - <<'PY'\n" +
+            "import json, os, shutil, subprocess, sys\n" +
+            "\n" +
+            "bar_output = (os.environ.get(\"M4_BAR_OUTPUT\") or \"\").strip()\n" +
             "\n" +
             "def run(cmd):\n" +
             "    try:\n" +
@@ -47,6 +58,10 @@ Row {
             "                for w in data:\n" +
             "                    if not isinstance(w, dict):\n" +
             "                        continue\n" +
+            "                    if bar_output:\n" +
+            "                        op = w.get('output')\n" +
+            "                        if op is None or str(op) != bar_output:\n" +
+            "                            continue\n" +
             "                    idx = w.get('idx')\n" +
             "                    try:\n" +
             "                        idx = int(idx)\n" +
@@ -55,13 +70,20 @@ Row {
             "                    # Keep indices >= 1 (common convention)\n" +
             "                    if idx < 1:\n" +
             "                        continue\n" +
-            "                    wss.append({\n" +
+            "                    rec = {\n" +
             "                        \"idx\": idx,\n" +
             "                        \"name\": (w.get('name') or ''),\n" +
             "                        \"is_focused\": bool(w.get('is_focused')),\n" +
             "                        \"is_active\":  bool(w.get('is_active')),\n" +
             "                        \"is_urgent\":  bool(w.get('is_urgent')),\n" +
-            "                    })\n" +
+            "                    }\n" +
+            "                    try:\n" +
+            "                        iid = w.get('id')\n" +
+            "                        if iid is not None:\n" +
+            "                            rec['wsId'] = int(iid)\n" +
+            "                    except Exception:\n" +
+            "                        pass\n" +
+            "                    wss.append(rec)\n" +
             "                wss.sort(key=lambda x: x.get('idx', 0))\n" +
             "                emit('niri', wss)\n" +
             "                sys.exit(0)\n" +
@@ -124,7 +146,11 @@ Row {
             "\n" +
             "emit('none', [])\n" +
             "PY"
-        ]
+    ]
+
+    Process {
+        id: wsProc
+        command: root.wsProcCommand
 
         stdout: StdioCollector {
             waitForEnd: true
@@ -146,13 +172,16 @@ Row {
                 for (let i = 0; i < arr.length; i++) {
                     const w = arr[i]
                     if (!w || typeof w !== "object") continue
-                    wsModel.append({
+                    const o = {
                         idx: w.idx,
                         name: w.name ?? "",
                         is_focused: !!w.is_focused,
                         is_active:  !!w.is_active,
                         is_urgent:  !!w.is_urgent
-                    })
+                    }
+                    if (w.wsId !== undefined && w.wsId !== null)
+                        o.wsId = w.wsId
+                    wsModel.append(o)
                 }
             }
         }
@@ -163,10 +192,10 @@ Row {
 
         running: true
         repeat: true
-        onTriggered: wsProc.exec(wsProc.command)
+        onTriggered: wsProc.exec(root.wsProcCommand)
     }
 
-    Component.onCompleted: wsProc.exec(wsProc.command)
+    Component.onCompleted: wsProc.exec(root.wsProcCommand)
 
     Repeater {
         model: wsModel
@@ -198,7 +227,16 @@ Row {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     if (root.backend === "niri") {
-                        focusProc.command = ["niri", "msg", "action", "focus-workspace", String(model.idx)]
+                        if (model.wsId !== undefined && model.wsId > 0) {
+                            focusProc.command = [
+                                "niri", "msg", "action", "focus-workspace",
+                                JSON.stringify({ Id: model.wsId })
+                            ]
+                        } else {
+                            focusProc.command = [
+                                "niri", "msg", "action", "focus-workspace", String(model.idx)
+                            ]
+                        }
                         focusProc.exec(focusProc.command)
                     } else if (root.backend === "hyprland") {
                         focusProc.command = ["hyprctl", "dispatch", "workspace", String(model.idx)]
